@@ -30,7 +30,7 @@ model_file_map = {
     "Decision Tree": "model/decision_tree.pkl",
     "kNN": "model/knn.pkl",
     "Naive Bayes": "model/naive_bayes.pkl",
-    "Random Forest (Ensemble)": "model/random_forest_(ensemble).pkl"
+    "Random Forest (Ensemble)": "model/random_forest_ensemble.pkl"
 }
 
 if uploaded_file is not None:
