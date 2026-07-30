@@ -60,14 +60,14 @@ model_file_map = {
     "Random Forest (Ensemble)": "model/random_forest_ensemble.pkl"
 }
 
-# Load Scaler if available (required for Logistic Regression / kNN scaling)
+# Load Scaler if available
 scaler = joblib.load("model/scaler.pkl") if os.path.exists("model/scaler.pkl") else None
 
 st.title("📊 Machine Learning Classification Web App")
 st.markdown("Upload test data, evaluate models in real-time, and compare performance across algorithms.")
 
 # Helper function to prepare input features & targets safely
-def prepare_data(df_input, model):
+def prepare_data(df_input, model, scaler=None):
     data = df_input.copy()
     
     # Drop unique ID if present
@@ -97,9 +97,15 @@ def prepare_data(df_input, model):
     if X.select_dtypes(include=['object', 'category']).shape[1] > 0:
         X = pd.get_dummies(X, drop_first=True)
 
-    # Reindex columns to match model's expected training features
-    if hasattr(model, "feature_names_in_"):
-        X = X.reindex(columns=model.feature_names_in_, fill_value=0)
+    # Reindex columns to match model/scaler training feature names and order
+    expected_cols = None
+    if scaler is not None and hasattr(scaler, "feature_names_in_"):
+        expected_cols = scaler.feature_names_in_
+    elif hasattr(model, "feature_names_in_"):
+        expected_cols = model.feature_names_in_
+
+    if expected_cols is not None:
+        X = X.reindex(columns=expected_cols, fill_value=0)
         
     return X, y
 
@@ -122,12 +128,12 @@ with tab1:
 
         try:
             model = joblib.load(model_file_map[model_option])
-            X_test, y_test = prepare_data(data, model)
+            X_test, y_test = prepare_data(data, model, scaler=scaler)
 
             if X_test is None or y_test is None:
                 st.warning("Please ensure your uploaded CSV contains a `'target'` or `'Churn'` column.")
             else:
-                # Apply feature scaling for Logistic Regression / kNN if scaler exists
+                # Apply feature scaling for Logistic Regression / kNN
                 if model_option in ["Logistic Regression", "kNN"] and scaler is not None:
                     try:
                         X_eval = scaler.transform(X_test)
@@ -195,10 +201,9 @@ with tab2:
         for name, path in model_file_map.items():
             try:
                 model = joblib.load(path)
-                X_test, y_test = prepare_data(data, model)
+                X_test, y_test = prepare_data(data, model, scaler=scaler)
 
                 if X_test is not None and y_test is not None:
-                    # Apply scaling for distance/gradient models
                     if name in ["Logistic Regression", "kNN"] and scaler is not None:
                         try:
                             X_eval = scaler.transform(X_test)
